@@ -1,5 +1,5 @@
 from pathlib import Path
-import os, re, datetime, sys
+import os, re, sys
 
 """
 - Encontrar arquivos .py
@@ -22,22 +22,31 @@ import os, re, datetime, sys
 """
 
 class DocGenerator:
+    # constrollers
     _list_dir_files: list = [0]
-    _informations: list = []
-    _database_type: str
-    _schemas_db: list
-    _tables_db: list
+    _doc: list = []
+    _main_text_py: str
     
-    def __init__(self, *, project_dir: str, command: str) -> None:
+    # infos
+    _title: str
+    _authors: str
+    _date: str
+    _stakeholdes_infos: list
+    _po_infos: list
+    _project_description: str
+    
+    def __init__(self, *, project_path: str, command: str) -> None:
+        path_parts = Path(project_path).parts
+        self._title = path_parts[len(path_parts)-1]
         for key, value in locals().items():
             if key not in ['self']:
                 self.__setattr__(key, value)
     
-    def get_and_filter_files_py(self, project_dir: str) -> None:
+    def get_and_filter_files_py(self) -> None:
         """
             Search and get all paths with files .py and pass to list
         """
-        for root, _, files in os.walk(Path(project_dir)):
+        for root, _, files in os.walk(Path(self.project_path)):
             for file in files:
                 if not re.search(r'\.git|env|venv|libs|__init__\.py|doc_generator', os.path.join(root, file)):
                     if re.search(r'main\.py', os.path.join(root, file)):
@@ -45,24 +54,20 @@ class DocGenerator:
                     elif re.search(r'\.py', os.path.join(root, file)):
                         self._list_dir_files.append(os.path.join(root, file))
     
-    @staticmethod
-    def _filter_infos_tuple(array):
+    def _read_py_file(self) -> None:
         """
-            Filter infos of function_name and commit contained in array attribute
-            that is unordered in multiple tuples and union in one tuple
+            Read files and get text
         """
-        information = []
-        for index in range(0,len(array)):
-            if array[index] == '__index__':            
-                del array[index]
+        for index in range(0, self._list_dir_files):
+            with open(self._list_dir_files[index], 'r') as file:
+                if index == 0:
+                    self._main_text_py = file.read()
+                    self._extract_documentation_from_files_py(self._main_text_py)
+                else:
+                    text_py = file.read()
+                    self._extract_documentation_from_files_py(text_py)
 
-        for index in range(0,len(array),2):
-            function_name = [value for value in array[index] if value != '']
-            commit = [value for value in array[index+1] if value != '']
-            information.append((function_name[0], commit[0]))
-        return information
-    
-    def extract_documentation_from_files_py(self):
+    def _extract_documentation_from_files_py(self, text_py) -> None:
         """
             Get:
             * class name
@@ -75,41 +80,56 @@ class DocGenerator:
             * name betwen "def" and "(".
             * commit betwen three quotation marks double or simple
         """
-        for file_py in self._list_dir_files:
-            with open(file_py, 'r') as file_reader_py:
-                text_py = file_reader_py.read()
-                information = re.findall(r'class (.+?)[:\(]|def (.+?)\(|:""" *(.+?) *"""|:\'\'\' *(.+?) *\'\'\'', text_py, re.IGNORECASE)
-                if information != []:
-                    self._informations.append(self._filter_infos_tuple(information))
+        information = re.findall(
+            r'([classdef]{1,5} .+? *:)\n *["""\'\'\']{1,3}\n *(.+?)\n *["""\'\'\']{1,3}', 
+            text_py, re.IGNORECASE)
+        if information != []:
+            self._doc.append(information)
+                
 
-    def extract_authors_from_main_py(self):
-        pass
+    def _extract_authors_from_main_py(self) -> None:
+        """
+            Get list of authors from main.py
+        """
+        self._authors = list(re.search(r'__authors__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
     
-    def extract_stakeholdes_infos_from_main_py(self):
-        pass
+    def _extract_stakeholdes_infos_from_main_py(self) -> None:
+        """
+            Get infos of stakeholders from main.py
+        """
+        self._stakeholdes_infos = list(re.search(r'__stakeholder_infos__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
     
-    def extract_po_infos_from_main_py(self):
-        pass
+    def _extract_po_infos_from_main_py(self) -> None:
+        """
+            Get infos of PO from main.py
+        """
+        self._po_infos = list(re.search(r'__po_infos__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
     
-    def extract_date_from_main_py(self):
-        pass
+    def _extract_date_from_main_py(self) -> None:
+        """
+            Get date from main.py
+        """
+        self._date = re.search(r'__date__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE)
     
-    def extract_description_from_main_py(self):
-        pass
+    def _extract_description_from_main_py(self) -> None:
+        """
+            Get description of project from main.py
+        """
+        self._description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, re.IGNORECASE)
     
-    def extract_databases(self):
+    def _extract_databases(self):
         """
             Search for databases names and atribute to instance class
         """
         pass
     
-    def extract_tables(self):
+    def _extract_tables(self):
         """
             Search for tables names and atribute to instance class
         """
         pass
     
-    def get_Dockerfile(self):
+    def _get_Dockerfile(self):
         """
             Search and notate "has dockerfile" for .Dockerfile if has else ignore this function
         """
@@ -123,8 +143,9 @@ class DocGenerator:
     
     def build(self):
         """
-            Create file .md with configs default
+            Start process and Create file .md with configs default
         """
+        pass
 
 class CommandError(Exception):
     def __init__(self, command):
@@ -150,17 +171,17 @@ class ArgumentsExceeded(Exception):
 if __name__ == '__main__':
     try:
         command = sys.argv[1]
-        project_dir = sys.argv[2]
+        project_path = sys.argv[2]
         
         if len(sys.argv) > 3:
             raise ArgumentsExceeded()
         elif command not in ['update', 'build']:
             raise CommandError(command)
-        elif not Path(project_dir).is_dir():
-            raise PathNotFound(project_dir)
+        elif not Path(project_path).is_dir():
+            raise PathNotFound(project_path)
         
         documentation = DocGenerator(
-            command=command, project_dir=project_dir)
+            command=command, project_path=project_path)
         
         documentation.get_files_py()
         documentation.extract_infos_from_files_py()
