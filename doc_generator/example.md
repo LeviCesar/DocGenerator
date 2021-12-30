@@ -39,6 +39,7 @@ Dessa forma reduz o trabalhando e garantindo a geração da documentação.
 start = inicia o processo
 soma = calcular a soma de dois valores distintos
 <br>
+
 ## Utils
 
 ### Rabbit

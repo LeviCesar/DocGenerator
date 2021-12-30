@@ -6,6 +6,7 @@ __authors__ = ['Levi César']
 __stakeholder_infos__ = ['Wesley', 'Wesley@solutta.com']
 __po_infos__ = ['Rubia', 'Rubia@solutta.com']
 __date__ = ''
+__url_docker__ = []
 
 class Example:
     """

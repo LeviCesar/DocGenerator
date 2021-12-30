@@ -2,16 +2,16 @@ from pathlib import Path
 import os, re, sys
 
 """
-- Encontrar arquivos .py
-- Filtrar excluindo os que estiverem em [libs./, __init__.py, env, venv, \.git]
-- Filtrar main.py 
-- pegar descrição do projeto em main.py
-- pegar __authors__ do projeto em main.py
-- pegar __stakeholder_infos__ do projeto em main.py
-- pegar __po_infos__ do projeto em main.py
-- pegar __date__ do projeto em main.py
-- pegar classes e comentários de classe
-- pegar funções, atributos e comentários de funções
+- Encontrar arquivos .py OK
+- Filtrar excluindo os que estiverem em [libs./, __init__.py, env, venv, \.git] OK
+- Filtrar main.py:
+- pegar descrição do projeto em main.py OK
+- pegar __authors__ do projeto em main.py OK
+- pegar __stakeholder_infos__ do projeto em main.py OK
+- pegar __po_infos__ do projeto em main.py OK
+- pegar __date__ do projeto em main.py OK
+- pegar classes e comentários de classe OK
+- pegar funções, atributos e comentários de funções OK
 
 - escrever o arquivo em um .md
 - reciclar arquivo .md se ele já existir
@@ -24,7 +24,7 @@ import os, re, sys
 class DocGenerator:
     # constrollers
     _list_dir_files: list = [0]
-    _doc: list = []
+    _documentation: list = []
     _main_text_py: str
     
     # infos
@@ -35,12 +35,18 @@ class DocGenerator:
     _po_infos: list
     _project_description: str
     
+    # utils
+    _databases_mysql: list
+    _databases_mongo: list
+    _rabbit_infos: list
+    _dockerfile_infos: dict = {}
+    
     def __init__(self, *, project_path: str, command: str) -> None:
+        super().__init__()
         path_parts = Path(project_path).parts
         self._title = path_parts[len(path_parts)-1]
-        for key, value in locals().items():
-            if key not in ['self']:
-                self.__setattr__(key, value)
+        self.project_path = project_path
+        self.__getattribute__(command)()
     
     def get_and_filter_files_py(self) -> None:
         """
@@ -84,8 +90,7 @@ class DocGenerator:
             r'([classdef]{1,5} .+? *:)\n *["""\'\'\']{1,3}\n *(.+?)\n *["""\'\'\']{1,3}', 
             text_py, re.IGNORECASE)
         if information != []:
-            self._doc.append(information)
-                
+            self._documentation.append(information)                
 
     def _extract_authors_from_main_py(self) -> None:
         """
@@ -117,24 +122,112 @@ class DocGenerator:
         """
         self._description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, re.IGNORECASE)
     
-    def _extract_databases(self):
+    def _extract_url_docker_from_main_py(self) -> None:
+        """
+            Get url docker of project from main.py
+        """
+        self._dockerfile_infos['urls_docker'] = re.search(r'__url_docker__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE)
+    
+    def _extract_databases(self, text_py: str):
         """
             Search for databases names and atribute to instance class
         """
         pass
     
-    def _extract_tables(self):
+    def _extract_tables(self, text_py: str):
         """
             Search for tables names and atribute to instance class
         """
         pass
     
-    def _get_Dockerfile(self):
+    def _extract_infos_rabbit(self, text_py: str):
+        """
+            Search and get infos about rabbit
+        """
+        self._rabbit_infos = re.findall(r'RabbitMQ\((.*?)\)', text_py)
+        
+    
+    def _extract_infos_dockerfile(self):
         """
             Search and notate "has dockerfile" for .Dockerfile if has else ignore this function
         """
-        pass
+        with open(Path(self.project_path).joinpath('Dockerfile'), 'r') as file:
+            text_docker = file.read()
+            self._dockerfile_infos['docker_distro'] = re.search(r'from .*?\n', text_docker, re.IGNORECASE)
+            self._dockerfile_infos['code_location'] = re.search(r'workdir .*?\n', text_docker, re.IGNORECASE)
     
+    def write_readme(self):
+        """
+            Write an README.md file to documentation
+        """
+        
+        text_readme = f'''
+        # {self._title}
+        
+        ## Autores
+        
+        -
+        
+        ## Stakeholder
+        
+        -
+        
+        ## PO
+        
+        -
+        
+        ## Data de Criação
+        
+        - **{self._date}**
+        
+        ## Descrição do Projeto
+        
+        {self._description}
+        
+        
+        ## Documentação Técnica
+        
+        -
+        
+        ## Utils
+        
+        ### Rabbit
+        
+        - 
+        
+        ### Docker
+        
+        ### Banco de dados
+        
+        - Mysql
+            - Database
+                - Tabelas
+        
+        - MongoDB
+            - Database
+                - Collections
+
+        ## Configurações de ambiente
+
+        - python 3.8
+        - git
+        - .env
+
+        ```bash
+        # Clone o repositório
+        $ git clone <nome do repositorio>
+
+        # Instale as libs python
+        $ python3 -m pip install -r req.txt
+
+        # Em caso de alterações ou acrescimo de libs
+        $ python3 -m pip freeze > req.txt
+
+        ````
+        
+        '''
+        
+    # executors
     def update(self):
         """
             If .md exists recycle title, author, date, description, environment_config,  else ignore this function.
@@ -145,45 +238,45 @@ class DocGenerator:
         """
             Start process and Create file .md with configs default
         """
-        pass
+        self._read_py_file()
 
 class CommandError(Exception):
     def __init__(self, command):
-        super().__init__(__class__.__name__)
-        self.errors = f'Not found command name {command}'
-        print('Printing Errors:')
-        print(f'Not found command name {command}')
+        super().__init__(f'Not found command name {command}')
+        self.errors = __class__.__name__
+        print(__class__.__name__)
         
 class PathNotFound(Exception):
     def __init__(self, path):
-        super().__init__(__class__.__name__)
-        self.errors = f'Not found project path {path}'
-        print('Printing Errors:')
-        print(f'Not found project path {path}')
+        super().__init__(f'Not found project path {path}')
+        self.errors = __class__.__name__
+        print(__class__.__name__)
 
 class ArgumentsExceeded(Exception):
     def __init__(self):
-        super().__init__(__class__.__name__)
-        self.errors = 'Number of args exceeded'
-        print('Printing Errors:')
-        print('Number of args exceeded')
+        super().__init__('Number of args exceeded')
+        self.errors = __class__.__name__
+        print(__class__.__name__)
     
+class ArgumentsNecessary(Exception):
+    def __init__(self):
+        super().__init__('Need command and project_path')
+        self.errors = __class__.__name__
+        print(__class__.__name__)
+
 if __name__ == '__main__':
-    try:
-        command = sys.argv[1]
-        project_path = sys.argv[2]
-        
-        if len(sys.argv) > 3:
-            raise ArgumentsExceeded()
-        elif command not in ['update', 'build']:
-            raise CommandError(command)
-        elif not Path(project_path).is_dir():
-            raise PathNotFound(project_path)
-        
-        documentation = DocGenerator(
-            command=command, project_path=project_path)
-        
-        documentation.get_files_py()
-        documentation.extract_infos_from_files_py()
-    except Exception as e:
-        print(e)
+    if len(sys.argv) == 1:
+        raise ArgumentsNecessary()
+    
+    command = sys.argv[1]
+    project_path = sys.argv[2].replace('\\', '/')
+    
+    if len(sys.argv) > 3:
+        raise ArgumentsExceeded()
+    elif command not in ['update', 'build']:
+        raise CommandError(command)
+    elif not Path(project_path).is_dir():
+        raise PathNotFound(project_path)
+    
+    documentation = DocGenerator(
+        command=command, project_path=project_path)
