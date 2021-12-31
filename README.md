@@ -2,8 +2,6 @@
 
 ## Autores
 
-- **Arthur Monteiro**
-- **Camilo Cardoso**
 - **Levi César**
 
 ## Data de Criação
@@ -12,5 +10,4 @@
 
 ## Descrição do Projeto
 
-O projeto Libs tem como finalidade fazer uma coleção com todas as dependencias mais utilizadas no desenvolvimento de projetos.<br><br>
-Nela vão estar contidas libs de autoria propria da solutta, as quais estaram utilizando libs prontas e as configurando para melhor serem utilizadas nos projetos da solutta.
+O projeto Doc Generator tem como finalidade automatizar a criação de projetos em python.
