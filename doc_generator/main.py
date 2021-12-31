@@ -27,7 +27,7 @@ class DocGenerator:
     _documentation: list = []
     _main_text_py: str
     
-    # infos
+    # infos 
     _title: str
     _authors: str
     _date: str
@@ -46,6 +46,7 @@ class DocGenerator:
         path_parts = Path(project_path).parts
         self._title = path_parts[len(path_parts)-1]
         self.project_path = project_path
+        self.get_and_filter_files_py()
         self.__getattribute__(command)()
     
     def get_and_filter_files_py(self) -> None:
@@ -64,8 +65,8 @@ class DocGenerator:
         """
             Read files and get text
         """
-        for index in range(0, self._list_dir_files):
-            with open(self._list_dir_files[index], 'r') as file:
+        for index in range(0, len(self._list_dir_files)):
+            with open(self._list_dir_files[index], 'r', encoding='UTF-8') as file:
                 if index == 0:
                     self._main_text_py = file.read()
                     self._extract_documentation_from_files_py(self._main_text_py)
@@ -88,57 +89,62 @@ class DocGenerator:
         """
         information = re.findall(
             r'([classdef]{1,5} .+? *:)\n *["""\'\'\']{1,3}\n *(.+?)\n *["""\'\'\']{1,3}', 
-            text_py, re.IGNORECASE)
+            text_py, flags= re.IGNORECASE)
         if information != []:
             self._documentation.append(information)                
-
+            print(information)
+            
     def _extract_authors_from_main_py(self) -> None:
         """
             Get list of authors from main.py
         """
-        self._authors = list(re.search(r'__authors__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
+        self._authors = list(re.search(r'__authors__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_stakeholdes_infos_from_main_py(self) -> None:
         """
             Get infos of stakeholders from main.py
         """
-        self._stakeholdes_infos = list(re.search(r'__stakeholder_infos__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
+        self._stakeholdes_infos = list(re.search(r'__stakeholder_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_po_infos_from_main_py(self) -> None:
         """
             Get infos of PO from main.py
         """
-        self._po_infos = list(re.search(r'__po_infos__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE))
+        self._po_infos = list(re.search(r'__po_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_date_from_main_py(self) -> None:
         """
             Get date from main.py
         """
-        self._date = re.search(r'__date__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE)
+        self._date = re.search(r'__date__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_description_from_main_py(self) -> None:
         """
             Get description of project from main.py
         """
-        self._description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, re.IGNORECASE)
+        self._project_description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_url_docker_from_main_py(self) -> None:
         """
             Get url docker of project from main.py
         """
-        self._dockerfile_infos['urls_docker'] = re.search(r'__url_docker__ *= *\[(.+?)\]', self._main_text_py, re.IGNORECASE)
+        self._dockerfile_infos['urls_docker'] = re.search(r'__url_docker__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_databases(self, text_py: str):
         """
             Search for databases names and atribute to instance class
         """
-        pass
+        # mongo
+        # re.search(r'NifiMongo\( *[\'"](.+?)[\'"]', text_py, flags= re.IGNORECASE)
+        
     
     def _extract_tables(self, text_py: str):
         """
             Search for tables names and atribute to instance class
         """
-        pass
+        # mongo
+        # re.search(r'checkcollection\( *[\'"] *(.+?) *[\'"]', text_py, flags= re.IGNORECASE)
+        
     
     def _extract_infos_rabbit(self, text_py: str):
         """
@@ -151,54 +157,79 @@ class DocGenerator:
         """
             Search and notate "has dockerfile" for .Dockerfile if has else ignore this function
         """
-        with open(Path(self.project_path).joinpath('Dockerfile'), 'r') as file:
+        with open(Path(self.project_path).joinpath('Dockerfile'), 'r', encoding='UTF-8') as file:
             text_docker = file.read()
-            self._dockerfile_infos['docker_distro'] = re.search(r'from .*?\n', text_docker, re.IGNORECASE)
-            self._dockerfile_infos['code_location'] = re.search(r'workdir .*?\n', text_docker, re.IGNORECASE)
+            self._dockerfile_infos['docker_distro'] = re.search(r'from .*?\n', text_docker, flags= re.IGNORECASE)
+            self._dockerfile_infos['code_location'] = re.search(r'workdir .*?\n', text_docker, flags= re.IGNORECASE)
     
     def write_readme(self):
         """
             Write an README.md file to documentation
         """
+        # defaults
+        authors, stackeholder_infos, po_infos, documentation = '', '', '', ''
+        for author in self._authors:
+            authors.join('\n- **' + author + '**')
+        
+        for stackeholder_info in self._stakeholdes_infos:
+            stackeholder_infos.join('\n- **' + stackeholder_info + '**')
+        
+        for po_info in self._po_infos:
+            po_infos.join('\n- **' + po_info + '**')
+        
+        for key, definition in self._documentation:
+            documentation.join(
+                '\n- **' + key + '**' +
+                '\n    - ' + definition
+            )
+            
+        # optionals
+        mysql_infos, mongo_infos, rabbit_infos = '', '', ''
+        for info in self._rabbit_infos:
+            rabbit_infos.append(
+                '\n- ' + info)
+        
+        # for info in self._databases_mysql:
+        #     rabbit_infos.append(
+        #         '\n- ' + info
+        #         '')
+        
+        # for info in self._databases_mongo:
+        #     rabbit_infos.append(
+        #         '\n- ' + info)
         
         text_readme = f'''
         # {self._title}
         
         ## Autores
-        
-        -
+        {authors}
         
         ## Stakeholder
-        
-        -
+        {stackeholder_infos}
         
         ## PO
-        
-        -
+        {po_infos}
         
         ## Data de Criação
         
         - **{self._date}**
         
         ## Descrição do Projeto
-        
-        {self._description}
-        
+        {self._project_description}
         
         ## Documentação Técnica
-        
-        -
+        {documentation}
         
         ## Utils
-        
         ### Rabbit
-        
-        - 
+        {rabbit_infos}
         
         ### Docker
+        - {self._dockerfile_infos['docker_distro']}
+        - {self._dockerfile_infos['code_location']}
+        - {self._dockerfile_infos['url_docker']}
         
         ### Banco de dados
-        
         - Mysql
             - Database
                 - Tabelas
@@ -215,7 +246,7 @@ class DocGenerator:
 
         ```bash
         # Clone o repositório
-        $ git clone <nome do repositorio>
+        $ git clone <nome_do_repositorio>
 
         # Instale as libs python
         $ python3 -m pip install -r req.txt
@@ -224,9 +255,10 @@ class DocGenerator:
         $ python3 -m pip freeze > req.txt
 
         ````
-        
         '''
+        text_readme.replace('        ', '')
         
+
     # executors
     def update(self):
         """

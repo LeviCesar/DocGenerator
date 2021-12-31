@@ -65,7 +65,7 @@ soma = calcular a soma de dois valores distintos
 
 ```bash
 # Clone o repositório
-$ git clone <nome do repositorio>
+$ git clone <nome_do_repositorio>
 
 # Instale as libs python
 $ python3 -m pip install -r req.txt
