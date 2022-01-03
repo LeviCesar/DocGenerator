@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Thread
 import os, re, sys
 
 """
@@ -72,7 +73,12 @@ class DocGenerator:
                     self._extract_documentation_from_files_py(self._main_text_py)
                 else:
                     text_py = file.read()
-                    self._extract_documentation_from_files_py(text_py)
+                    # self._extract_documentation_from_files_py(text_py)
+                    thread = Thread(
+                        target = self._extract_documentation_from_files_py,
+                        args = (text_py) 
+                    )
+                    thread.start()
 
     def _extract_documentation_from_files_py(self, text_py) -> None:
         """
@@ -82,7 +88,7 @@ class DocGenerator:
             * function atributes
             * commits of class and functions
             
-            Open files with "r" and search for:
+            Search for:
             * name betwen "class" and ":"
             * name betwen "def" and "(".
             * commit betwen three quotation marks double or simple
@@ -91,9 +97,8 @@ class DocGenerator:
             r'([classdef]{1,5} .+? *:)\n *["""\'\'\']{1,3}\n *(.+?)\n *["""\'\'\']{1,3}', 
             text_py, flags= re.IGNORECASE)
         if information != []:
-            self._documentation.append(information)                
-            print(information)
-            
+            self._documentation.append(information)
+    
     def _extract_authors_from_main_py(self) -> None:
         """
             Get list of authors from main.py
@@ -136,7 +141,7 @@ class DocGenerator:
         """
         # mongo
         # re.search(r'NifiMongo\( *[\'"](.+?)[\'"]', text_py, flags= re.IGNORECASE)
-        
+        pass
     
     def _extract_tables(self, text_py: str):
         """
@@ -144,7 +149,7 @@ class DocGenerator:
         """
         # mongo
         # re.search(r'checkcollection\( *[\'"] *(.+?) *[\'"]', text_py, flags= re.IGNORECASE)
-        
+        pass
     
     def _extract_infos_rabbit(self, text_py: str):
         """
@@ -231,18 +236,18 @@ class DocGenerator:
         
         ### Banco de dados
         - Mysql
-            - Database
-                - Tabelas
+            - Database: ...
+                - Tabelas: ...
         
         - MongoDB
-            - Database
-                - Collections
+            - Database: ...
+                - Collections: ...
 
         ## Configurações de ambiente
 
         - python 3.8
         - git
-        - .env
+        - pedir o arquivo .env ao devops
 
         ```bash
         # Clone o repositório
@@ -270,8 +275,26 @@ class DocGenerator:
         """
             Start process and Create file .md with configs default
         """
-        self._read_py_file()
-
+        threads = []
+        _functions = [
+            '_read_py_file', 
+            '_extract_authors_from_main_py', 
+            '_extract_po_infos_from_main_py'
+            '_extract_stakeholdes_infos_from_main_py',
+            '_extract_date_from_main_py',
+            '_extract_description_from_main_py',
+            '_extract_infos_dockerfile'
+        ]
+        for _function in _functions:
+            thread = Thread(target=self.__getattribute__(_function)())
+            thread.start()
+            threads.append(thread)
+        
+        for thread in threads:
+            thread.join()
+        
+        self.write_readme()
+        
 class CommandError(Exception):
     def __init__(self, command):
         super().__init__(f'Not found command name {command}')
@@ -301,7 +324,10 @@ if __name__ == '__main__':
         raise ArgumentsNecessary()
     
     command = sys.argv[1]
-    project_path = sys.argv[2].replace('\\', '/')
+    project_path = sys.argv[2]
+    
+    if project_path.search('\\'):
+        pass
     
     if len(sys.argv) > 3:
         raise ArgumentsExceeded()
