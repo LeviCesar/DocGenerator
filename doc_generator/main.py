@@ -22,6 +22,66 @@ import os, re, sys
     - o nome da ação que deseja ser realizado (build, update)
 """
 
+text_readme = '''
+        # {title}
+        
+        ## Autores
+        {authors}
+        
+        ## Stakeholder
+        {stackeholder_infos}
+        
+        ## PO
+        {po_infos}
+        
+        ## Data de Criação
+        
+        - **{date}**
+        
+        ## Descrição do Projeto
+        {project_description}
+        
+        ## Documentação Técnica
+        {documentation}
+        
+        ## Utils
+        ### Rabbit
+        {rabbit_infos}
+        
+        ### Docker
+        - {docker_distro}
+        - {code_location}
+        - docker url locations
+            - produção: {url_docker_production}
+            - homologação: {url_docker_homologation}
+        
+        ### Banco de dados
+        - Mysql
+            - Hosts: 
+                {databases_mysql}
+        
+        - MongoDB
+            - Hosts:
+                {databases_mongo}
+
+        ## Configurações de ambiente
+
+        - python 3.8
+        - git
+        - pedir o arquivo .env ao devops
+
+        ```bash
+        # Clone o repositório
+        $ git clone <nome_do_repositorio>
+
+        # Instale as libs python
+        $ python3 -m pip install -r req.txt
+
+        # Em caso de alterações ou acrescimo de libs
+        $ python3 -m pip freeze > req.txt
+
+        ````
+        '''
 class DocGenerator:
     # constrollers
     _list_dir_files: list = [0]
@@ -29,23 +89,23 @@ class DocGenerator:
     _main_text_py: str
     
     # infos 
-    _title: str
-    _authors: str
-    _date: str
-    _stakeholdes_infos: list
-    _po_infos: list
-    _project_description: str
+    title: str
+    authors: str
+    date: str
+    stakeholdes_infos: list
+    po_infos: list
+    project_description: str
     
     # utils
-    _databases_mysql: list
-    _databases_mongo: list
-    _rabbit_infos: list
-    _dockerfile_infos: dict = {}
+    databases_mysql: list
+    databases_mongo: list
+    rabbit_infos: list
+    dockerfile_infos: dict = {}
     
     def __init__(self, *, project_path: str, command: str) -> None:
         super().__init__()
         path_parts = Path(project_path).parts
-        self._title = path_parts[len(path_parts)-1]
+        self.title = path_parts[len(path_parts)-1]
         self.project_path = project_path
         self.get_and_filter_files_py()
         self.__getattribute__(command)()
@@ -103,37 +163,37 @@ class DocGenerator:
         """
             Get list of authors from main.py
         """
-        self._authors = list(re.search(r'__authors__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
+        self.authors = list(re.search(r'__authors__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_stakeholdes_infos_from_main_py(self) -> None:
         """
             Get infos of stakeholders from main.py
         """
-        self._stakeholdes_infos = list(re.search(r'__stakeholder_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
+        self.stakeholdes_infos = list(re.search(r'__stakeholder_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_po_infos_from_main_py(self) -> None:
         """
             Get infos of PO from main.py
         """
-        self._po_infos = list(re.search(r'__po_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
+        self.po_infos = list(re.search(r'__po_infos__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE))
     
     def _extract_date_from_main_py(self) -> None:
         """
             Get date from main.py
         """
-        self._date = re.search(r'__date__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
+        self.date = re.search(r'__date__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_description_from_main_py(self) -> None:
         """
             Get description of project from main.py
         """
-        self._project_description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, flags= re.IGNORECASE)
+        self.project_description = re.search(r'["""\'\'\']{1,3}\n *(.+?) *["""\'\'\']{1,3}\n', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_url_docker_from_main_py(self) -> None:
         """
             Get url docker of project from main.py
         """
-        self._dockerfile_infos['urls_docker'] = re.search(r'__url_docker__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
+        self.dockerfile_infos['urls_docker'] = re.search(r'__url_docker__ *= *\[(.+?)\]', self._main_text_py, flags= re.IGNORECASE)
     
     def _extract_databases(self, text_py: str):
         """
@@ -155,7 +215,7 @@ class DocGenerator:
         """
             Search and get infos about rabbit
         """
-        self._rabbit_infos = re.findall(r'RabbitMQ\((.*?)\)', text_py)
+        self.rabbit_infos = re.findall(r'RabbitMQ\((.*?)\)', text_py)
         
     
     def _extract_infos_dockerfile(self):
@@ -173,10 +233,10 @@ class DocGenerator:
         """
         # defaults
         authors, stackeholder_infos, po_infos, documentation = '', '', '', ''
-        for author in self._authors:
+        for author in self.authors:
             authors.join('\n- **' + author + '**')
         
-        for stackeholder_info in self._stakeholdes_infos:
+        for stackeholder_info in self.stakeholdes_infos:
             stackeholder_infos.join('\n- **' + stackeholder_info + '**')
         
         for po_info in self._po_infos:
@@ -203,66 +263,9 @@ class DocGenerator:
         #     rabbit_infos.append(
         #         '\n- ' + info)
         
-        text_readme = f'''
-        # {self._title}
+        kwargs = {}
         
-        ## Autores
-        {authors}
-        
-        ## Stakeholder
-        {stackeholder_infos}
-        
-        ## PO
-        {po_infos}
-        
-        ## Data de Criação
-        
-        - **{self._date}**
-        
-        ## Descrição do Projeto
-        {self._project_description}
-        
-        ## Documentação Técnica
-        {documentation}
-        
-        ## Utils
-        ### Rabbit
-        {rabbit_infos}
-        
-        ### Docker
-        - {self._dockerfile_infos['docker_distro']}
-        - {self._dockerfile_infos['code_location']}
-        - {self._dockerfile_infos['url_docker']}
-        
-        ### Banco de dados
-        - Mysql
-            - Database: ...
-                - Tabelas: ...
-        
-        - MongoDB
-            - Database: ...
-                - Collections: ...
-
-        ## Configurações de ambiente
-
-        - python 3.8
-        - git
-        - pedir o arquivo .env ao devops
-
-        ```bash
-        # Clone o repositório
-        $ git clone <nome_do_repositorio>
-
-        # Instale as libs python
-        $ python3 -m pip install -r req.txt
-
-        # Em caso de alterações ou acrescimo de libs
-        $ python3 -m pip freeze > req.txt
-
-        ````
-        '''
-        text_readme.replace('        ', '')
-        
+        text_readme.format(**kwargs)
 
     # executors
     def update(self):
@@ -276,17 +279,17 @@ class DocGenerator:
             Start process and Create file .md with configs default
         """
         threads = []
-        _functions = [
-            '_read_py_file', 
-            '_extract_authors_from_main_py', 
-            '_extract_po_infos_from_main_py'
-            '_extract_stakeholdes_infos_from_main_py',
-            '_extract_date_from_main_py',
-            '_extract_description_from_main_py',
-            '_extract_infos_dockerfile'
+        functions = [
+            'read_py_file', 
+            'extract_authors_from_main_py', 
+            'extract_po_infos_from_main_py'
+            'extract_stakeholdes_infos_from_main_py',
+            'extract_date_from_main_py',
+            'extract_description_from_main_py',
+            'extract_infos_dockerfile'
         ]
-        for _function in _functions:
-            thread = Thread(target=self.__getattribute__(_function)())
+        for function in functions:
+            thread = Thread(target=self.__getattribute__(function))
             thread.start()
             threads.append(thread)
         
@@ -299,35 +302,28 @@ class CommandError(Exception):
     def __init__(self, command):
         super().__init__(f'Not found command name {command}')
         self.errors = __class__.__name__
-        print(__class__.__name__)
         
 class PathNotFound(Exception):
     def __init__(self, path):
         super().__init__(f'Not found project path {path}')
         self.errors = __class__.__name__
-        print(__class__.__name__)
 
 class ArgumentsExceeded(Exception):
     def __init__(self):
         super().__init__('Number of args exceeded')
         self.errors = __class__.__name__
-        print(__class__.__name__)
     
 class ArgumentsNecessary(Exception):
     def __init__(self):
         super().__init__('Need command and project_path')
         self.errors = __class__.__name__
-        print(__class__.__name__)
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         raise ArgumentsNecessary()
     
-    command = sys.argv[1]
-    project_path = sys.argv[2]
-    
-    if project_path.search('\\'):
-        pass
+    command = sys.argv[1] # Function name (build or update)
+    project_path = sys.argv[2] # Root path to document
     
     if len(sys.argv) > 3:
         raise ArgumentsExceeded()
@@ -335,6 +331,6 @@ if __name__ == '__main__':
         raise CommandError(command)
     elif not Path(project_path).is_dir():
         raise PathNotFound(project_path)
-    
+
     documentation = DocGenerator(
         command=command, project_path=project_path)
